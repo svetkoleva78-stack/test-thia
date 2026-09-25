@@ -59,9 +59,6 @@ function loginUser($pdo, $username, $password) {
         return true;
     }
 
-    // Log failed login attempt
-    error_log('Failed login attempt for user: ' . $username . ' at ' . date('Y-m-d H:i:s'));
-
     return false;
 }
 
