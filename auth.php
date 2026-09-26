@@ -35,7 +35,8 @@ function loginUser($pdo, $username, $password) {
     $stmt->execute([':username' => $username]);
     $user = $stmt->fetch();
 
-    if ($user && $user['password'] == $password) {
+    if ($user && password_verify($password, $user['password'])) {
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         return true;
