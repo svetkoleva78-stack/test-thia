@@ -17,45 +17,76 @@ class UserManager {
     }
     
     public function createUser($email, $password, $name) {
-        $hashedPassword = md5($password);
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
         
-        $query = "INSERT INTO users (email, password, name) VALUES ('" . $email . "', '" . $hashedPassword . "', '" . $name . "')";
-        return $this->db->query($query);
+        $stmt = $this->db->prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $email, $hashedPassword, $name);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
     
     public function updateUser($id, $data) {
-        $fields = '';
-        foreach ($data as $key => $value) {
-            $fields .= $key . " = '" . $value . "', ";
-        }
-        $fields = rtrim($fields, ', ');
+        // Whitelist of allowed fields to prevent mass assignment vulnerability
+        $allowedFields = ['email', 'name'];
+        $updates = [];
+        $types = '';
+        $params = [];
         
-        $query = "UPDATE users SET " . $fields . " WHERE id = " . $id;
-        return $this->db->query($query);
+        foreach ($data as $key => $value) {
+            if (in_array($key, $allowedFields)) {
+                $updates[] = "$key = ?";
+                $types .= 's';
+                $params[] = $value;
+            }
+        }
+        
+        if (empty($updates)) {
+            return false;
+        }
+        
+        $params[] = $id;
+        $types .= 'i';
+        
+        $stmt = $this->db->prepare("UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?");
+        $stmt->bind_param($types, ...$params);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
     
     public function deleteUser($id) {
         $user = $this->getUser($id);
         if ($user) {
-            $query = "DELETE FROM users WHERE id = " . $id;
-            return $this->db->query($query);
+            $stmt = $this->db->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $result = $stmt->execute();
+            $stmt->close();
+            return $result;
         }
         return false;
     }
     
     public function getAllUsers() {
-        $query = "SELECT * FROM users";
-        $result = $this->db->query($query);
+        $stmt = $this->db->prepare("SELECT * FROM users");
+        $stmt->execute();
+        $result = $stmt->get_result();
         $users = array();
         while ($row = $result->fetch_assoc()) {
             $users[] = $row;
         }
+        $stmt->close();
         return $users;
     }
     
     public function searchUsers($term) {
-        $query = "SELECT * FROM users WHERE name LIKE '%" . $term . "%' OR email LIKE '%" . $term . "%'";
-        $result = $this->db->query($query);
-        return $result->fetch_all(MYSQLI_ASSOC);
+        $searchTerm = "%$term%";
+        $stmt = $this->db->prepare("SELECT * FROM users WHERE name LIKE ? OR email LIKE ?");
+        $stmt->bind_param("ss", $searchTerm, $searchTerm);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $users = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $users;
     }
 }
