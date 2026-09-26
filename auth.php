@@ -21,7 +21,7 @@ try {
 }
 
 function registerUser($pdo, $username, $password) {
-    $hash = md5($password);
+    $hash = password_hash($password, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
     $stmt->execute([
         ':username' => $username,
