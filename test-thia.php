@@ -9,8 +9,10 @@ class UserManager {
     }
     
     public function getUser($id) {
-        $query = "SELECT * FROM users WHERE id = " . $id;
-        $result = $this->db->query($query);
+        $stmt = $this->db->prepare("SELECT * FROM users WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         return $result->fetch_assoc();
     }
     
