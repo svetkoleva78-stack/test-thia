@@ -9,21 +9,27 @@ class UserManager {
     }
     
     // ============================================
-    // LOGIN — използва md5, не regenerate session
+    // LOGIN — използва password_verify и regenerate session
     // ============================================
     public function loginUser($email, $password) {
-        $passwordHash = md5($password);
-        
-        $query = "SELECT * FROM users WHERE email = '$email' AND password = '$passwordHash'";
-        $result = $this->db->query($query);
+        $stmt = $this->db->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
         if ($result->num_rows > 0) {
             $user = $result->fetch_assoc();
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_email'] = $user['email'];
-            return true;
+            
+            if (password_verify($password, $user['password'])) {
+                session_regenerate_id(true);
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_email'] = $user['email'];
+                $stmt->close();
+                return true;
+            }
         }
         
+        $stmt->close();
         return false;
     }
     
