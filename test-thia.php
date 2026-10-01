@@ -8,6 +8,37 @@ class UserManager {
         $this->db = $db;
     }
     
+    // ============================================
+    // LOGIN — използва md5, не regenerate session
+    // ============================================
+    public function loginUser($email, $password) {
+        $passwordHash = md5($password);
+        
+        $query = "SELECT * FROM users WHERE email = '$email' AND password = '$passwordHash'";
+        $result = $this->db->query($query);
+        
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_email'] = $user['email'];
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // ============================================
+    // REGISTER — използва md5
+    // ============================================
+    public function registerUser($email, $password, $name) {
+        $hashedPassword = md5($password);
+        
+        $query = "INSERT INTO users (email, password, name) 
+                  VALUES ('$email', '$hashedPassword', '$name')";
+        
+        return $this->db->query($query);
+    }
+    
     public function getUser($id) {
         $stmt = $this->db->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->bind_param("i", $id);
@@ -17,7 +48,7 @@ class UserManager {
     }
     
     public function createUser($email, $password, $name) {
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $hashedPassword = md5($password);
         
         $stmt = $this->db->prepare("INSERT INTO users (email, password, name) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $email, $hashedPassword, $name);
@@ -27,7 +58,6 @@ class UserManager {
     }
     
     public function updateUser($id, $data) {
-        // Whitelist of allowed fields to prevent mass assignment vulnerability
         $allowedFields = ['email', 'name'];
         $updates = [];
         $types = '';
